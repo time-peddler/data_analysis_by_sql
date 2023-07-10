@@ -1,0 +1,39 @@
+-- 有5个以上账号的清单
+SELECT * 
+FROM JSJ.TEMP_31_20230705_ZHUYINGHAO_SHENJI_71
+WHERE cert_no IN (
+  SELECT cert_no FROM (
+    SELECT  cert_no, COUNT(DISTINCT product_no) AS accounts_num
+    FROM JSJ.TEMP_31_20230705_ZHUYINGHAO_SHENJI_71
+    WHERE TRIM(product_no) NOT IN (
+      SELECT DISTINCT TRIM(product_n) 
+      FROM JSJ.TEMP_31_20230705_ZHUYINGHAO_SJ_TESTCARD
+    )
+    GROUP BY cert_no
+    )
+  WHERE accounts_num > 5
+  )
+  
+-- 同一个身份证号码有不同的名字的清单
+SELECT t1.*
+FROM JSJ.TEMP_31_20230620_YXQINSHIYU_SHENJI_71 t1
+INNER JOIN (
+    SELECT cert_no
+    FROM JSJ.TEMP_31_20230620_YXQINSHIYU_SHENJI_71
+    WHERE TRIM(product_no) NOT IN (
+        SELECT DISTINCT TRIM(product_n)
+        FROM JSJ.TEMP_31_20230705_ZHUYINGHAO_SJ_TESTCARD
+    )
+    GROUP BY cert_no
+    HAVING COUNT(DISTINCT name) > 1
+) t2 ON t1.cert_no = t2.cert_no;
+
+-- 同一个身份证号码有不同的名字的数量
+SELECT cert_no, COUNT(DISTINCT name) as name_count
+FROM JSJ.TEMP_31_20230620_YXQINSHIYU_SHENJI_71 t1
+WHERE TRIM(t1.product_no) NOT IN (
+    SELECT DISTINCT TRIM(product_n)
+    FROM JSJ.TEMP_31_20230705_ZHUYINGHAO_SJ_TESTCARD
+)
+GROUP BY cert_no
+HAVING COUNT(DISTINCT name) > 1;
