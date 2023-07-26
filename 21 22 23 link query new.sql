@@ -34,9 +34,11 @@ WHERE (user_id, lv_type) IN (
   )
 AND TO_DATE(month,'YYYYMM') BETWEEN TO_DATE('202210','YYYYMM') AND TO_DATE('202212','YYYYMM')
 
--- 以lv_type为分类条件，计算2023前三个月的退网率
+-- 以lv_type为分类条件，计算2022年入网不合档次的用户数量/及这些用户在2023前三个月的退网数量/退网率
 
 SELECT t1.lv_type,
+  COUNT(DISTINCT t1.user_id) AS user_num,
+  COUNT(t2.xh_date) AS quit_num,
   COUNT(t2.xh_date)/COUNT(DISTINCT t1.user_id) AS quit_rate
 FROM (
      SELECT DISTINCT user_id, lv_type
@@ -52,23 +54,19 @@ LEFT JOIN(
 ON TRIM(t1.user_id) = TRIM(t2.user_id)
 GROUP BY t1.lv_type
 
--- 以lv_type为分类条件，计算2023前三个月的退网数量
+-- 以lv_type为分类条件，计算2022年入网不合档次的用户在2023前三个月的退网清单
 
-SELECT t1.lv_type,
-  COUNT(t2.xh_date) AS quit_num
-FROM (
-     SELECT DISTINCT user_id, lv_type
-     FROM forth_quarter_inconform
-     ) t1
+SELECT DISTINCT t2.*
+FROM forth_quarter_inconform t1
 LEFT JOIN(
   SELECT * 
     FROM JSJ.temp_31_20230620_yxqinshiyu_shenji_02 t2
-    WHERE t2.xh_date <> '\N'
+	WHERE t2.xh_date <> '\N'
       AND TO_DATE(t2.xh_date,'YYYY-MM-DD') >= TO_DATE('2023-01-01','YYYY-MM-DD')
       AND TO_DATE(t2.xh_date,'YYYY-MM-DD') <= TO_DATE('2023-03-31','YYYY-MM-DD')
   ) t2
 ON TRIM(t1.user_id) = TRIM(t2.user_id)
-GROUP BY t1.lv_type
+WHERE t2.xh_date <> '\N'
 
 -- 以下建表方式，报错：ora-01652:无法通过128(在表空间space中)扩展temp
 
@@ -86,3 +84,10 @@ INNER JOIN (SELECT DISTINCT user_id, month_id, lv_type,
       region_name, create_date, channel_name, channel_code
     FROM JSJ.temp_90_20230615_yxzouhua_sj_high_value_02) t2
 ON TRIM(t1.user_id) = TRIM(t2.user_id) AND TRIM(t1.month) = TRIM(t2.month_id)
+
+-- 2022年入网两个档次用户数量，不考虑real_arpu是否在lv_type档次中
+
+SELECT lv_type, COUNT(DISTINCT user_id) AS user_count
+FROM JSJ.temp_90_20230615_yxzouhua_sj_high_value_02 t3
+WHERE SUBSTR(create_date, 1, 4) = '2022'
+GROUP BY lv_type
