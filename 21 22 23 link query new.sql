@@ -2,7 +2,7 @@
 /* 实际上temp_90_20230615_yxzouhua_sj_high_value_02数据有问题，缺失某些月份的数据，
 该表主要按增值业务办理时间来统计数据，在此基础上补充lv_type等字段，故而没有办理增值业务的月份就没有记录*/
 
--- 将两表按月份合并
+-- 将两表按月份合并以备后用
 
 CREATE TABLE high_value_arpu AS
 WITH real_arpu_table AS (
@@ -69,3 +69,20 @@ LEFT JOIN(
   ) t2
 ON TRIM(t1.user_id) = TRIM(t2.user_id)
 GROUP BY t1.lv_type
+
+-- 以下建表方式，报错：ora-01652:无法通过128(在表空间space中)扩展temp
+
+CREATE TABLE high_value_real_arpu AS
+SELECT t1.*, t2.lv_type, t2.PN, t2.T_VAL, t2.region_name, t2.create_date,
+  t2.channel_name, t2.channel_code
+FROM (SELECT *
+      FROM (
+        SELECT temp.*, 
+        CASE WHEN (temp.zk_arpu IS NOT NULL AND temp.zk_arpu <> 0) THEN temp.zk_arpu ELSE temp.arpu END AS real_arpu
+        FROM JSJ.temp_31_20230620_yxqinshiyu_shenji_22  temp)
+        ) t1
+INNER JOIN (SELECT DISTINCT user_id, month_id, lv_type, 
+      product_no as PN, total_value AS T_VAL,
+      region_name, create_date, channel_name, channel_code
+    FROM JSJ.temp_90_20230615_yxzouhua_sj_high_value_02) t2
+ON TRIM(t1.user_id) = TRIM(t2.user_id) AND TRIM(t1.month) = TRIM(t2.month_id)
